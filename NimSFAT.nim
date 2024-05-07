@@ -330,6 +330,7 @@ proc toString(str: seq[char]): string =
   result = newStringOfCap(len(str))
   for ch in str:
     add(result, ch)
+
 # Get file contents by name
 proc cat(filePath: string, fileName: string) =
     var vfsFileStream = newFileStream(filePath, fmRead)
@@ -352,10 +353,12 @@ proc cat(filePath: string, fileName: string) =
     vfsFileStream.setPosition(endOfSuperBlock + int(sBlock.total_direntries * sBlock.bytes_per_sector) + int(sBlock.bytes_per_sector) + int(targetDirEntry.fat_entry * sBlock.bytes_per_sector))
     var res: seq[char]
     var index = 0
+    # Does not read files correctly
     while index < int(targetDirEntry.size):
-        res.add(vfsFileStream.readChar())
+        stdout.write vfsFileStream.readChar()
+        #res.add(vfsFileStream.readChar())
         index += 1
-    echo toString(res)
+    #echo toString(res)
 
 # Disk Free: get how much space is left in the file system
 proc df(filePath: string) =
@@ -372,18 +375,72 @@ proc df(filePath: string) =
     echo "Filesystem\tBlocks\tUsed\tAvailable\tUse%"
     echo "/\t\t",sBlock.total_sectors,"\t",totalSpaceUsed,"\t",(int(totalSpace)-int(totalSpaceUsed)),"\t\t", round((int(totalSpaceUsed) / int(totalSpace))*100), "%"
         
+import os
+proc printHelp() =
+    echo """
+███╗   ██╗██╗███╗   ███╗      ███████╗███████╗ █████╗ ████████╗
+████╗  ██║██║████╗ ████║      ██╔════╝██╔════╝██╔══██╗╚══██╔══╝
+██╔██╗ ██║██║██╔████╔██║█████╗███████╗█████╗  ███████║   ██║   
+██║╚██╗██║██║██║╚██╔╝██║╚════╝╚════██║██╔══╝  ██╔══██║   ██║   
+██║ ╚████║██║██║ ╚═╝ ██║      ███████║██║     ██║  ██║   ██║   
+╚═╝  ╚═══╝╚═╝╚═╝     ╚═╝      ╚══════╝╚═╝     ╚═╝  ╚═╝   ╚═╝   
+    Simple FAT implemented in nim - by 0x0vid
 
+    -help - Print this menu
+    -create-vfs [vfs-file-name] - Create a new vfs
+    -copy-file [vfs-file-name] [file path] - Copy file to vfs
+    -ls [vfs-file-name] - List files in vfs
+    -cat [vfs-file-name] [file name] - Print file contents from vfs file
+    -df [vfs-file-name]  - get stats of vfs
 
-createEmptyFileSystem(".\\VFS.vfs")
-copyFileToVFS(".\\VFS.vfs", ".\\hello.exe")
-#copyFileToVFS(".\\VFS.vfs", ".\\file16.txt")
-#copyFileToVFS(".\\VFS.vfs", ".\\file23.txt")
-#copyFileToVFS(".\\VFS.vfs", ".\\file61.txt")
+    Options:
+    [vfs-file-name] - Name for file where vfs is written
+    [file path] - Path for file
+    [file name] - Vfs file name
+    """
+    quit(-1)
 
-ls(".\\VFS.vfs")
-cat(".\\VFS.vfs", "hello.exe")
-copyFileToVFS(".\\VFS.vfs", ".\\file9.txt")
+var helpVariations = @["help", "-h", "--help", "/h", "/help"]
 
-df(".\\VFS.vfs")
-# Help
+if paramCount() == 0:
+    printHelp()
+
+if paramStr(1) in helpVariations:
+    printHelp()
+
 # Menu
+if paramStr(1) == "-create-vfs":
+    if paramCount() != 2:
+        echo "Please specify all required inputs"
+        quit(-1)
+    createEmptyFileSystem(paramStr(2))
+    quit()
+
+if paramStr(1) == "-copy-file":
+    if paramCount() != 3:
+        echo "Please specify all required inputs"
+        quit(-1)
+    copyFileToVFS(paramStr(2), paramStr(3))
+    quit()
+
+if paramStr(1) == "-ls":
+    if paramCount() != 2:
+        echo "Please specify all required inputs"
+        quit(-1)
+    ls(paramStr(2))
+    quit()
+
+if paramStr(1) == "-cat":
+    if paramCount() != 3:
+        echo "Please specify all required inputs"
+        quit(-1)
+    cat(paramStr(2), paramStr(3))
+    quit()
+
+if paramStr(1) == "-df":
+    if paramCount() != 2:
+        echo "Please specify all required inputs"
+        quit(-1)
+    df(paramStr(2))
+    quit()
+
