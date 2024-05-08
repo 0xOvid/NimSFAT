@@ -360,6 +360,34 @@ proc cat(filePath: string, fileName: string) =
         index += 1
     #echo toString(res)
 
+proc extractFile(filePath: string, fileName: string, destinationPath: string) =
+    var vfsFileStream = newFileStream(filePath, fmRead)
+    
+    var sBlock: SuperBlock = initializeSuperBlock(vfsFileStream)
+
+    var targetDirEntry: DirEntry
+    var dirEntries = getDirEntries(vfsFileStream, sBlock)
+    for dir in dirEntries:
+        var dirName = $(toCString(dir.name))
+        if dirName.contains(fileName):
+            targetDirEntry = dir
+            break
+    if toCString(targetDirEntry.name) == "":
+        echo "[ERROR] No such file exsist"
+        quit(-1)
+
+
+    # Read Contents
+    vfsFileStream.setPosition(endOfSuperBlock + int(sBlock.total_direntries * sBlock.bytes_per_sector) + int(sBlock.bytes_per_sector) + int(targetDirEntry.fat_entry * sBlock.bytes_per_sector))
+    var res = newFileStream(destinationPath, fmWrite)
+    var index = 0
+
+    # Does not read files correctly
+    while index < int(targetDirEntry.size):
+        res.write(vfsFileStream.readUint8())
+        index += 1
+    #echo toString(res)
+
 # Disk Free: get how much space is left in the file system
 proc df(filePath: string) =
     var vfsFileStream = newFileStream(filePath, fmRead)
@@ -388,7 +416,8 @@ proc printHelp() =
 
     -help - Print this menu
     -create-vfs [vfs-file-name] - Create a new vfs
-    -copy-file [vfs-file-name] [file path] - Copy file to vfs
+    -insert [vfs-file-name] [file path] - Copy file to vfs
+    -extract [vfs-file-name] [file name] [file dest path] - Extract file from system to specified path
     -ls [vfs-file-name] - List files in vfs
     -cat [vfs-file-name] [file name] - Print file contents from vfs file
     -df [vfs-file-name]  - get stats of vfs
@@ -397,6 +426,7 @@ proc printHelp() =
     [vfs-file-name] - Name for file where vfs is written
     [file path] - Path for file
     [file name] - Vfs file name
+    [file dest path] - File destination
     """
     quit(-1)
 
@@ -416,11 +446,18 @@ if paramStr(1) == "-create-vfs":
     createEmptyFileSystem(paramStr(2))
     quit()
 
-if paramStr(1) == "-copy-file":
+if paramStr(1) == "-insert":
     if paramCount() != 3:
         echo "Please specify all required inputs"
         quit(-1)
     copyFileToVFS(paramStr(2), paramStr(3))
+    quit()
+
+if paramStr(1) == "-extract":
+    if paramCount() != 4:
+        echo "Please specify all required inputs"
+        quit(-1)
+    extractFile(paramStr(2), paramStr(3), paramStr(4))
     quit()
 
 if paramStr(1) == "-ls":
